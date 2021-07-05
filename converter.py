@@ -149,10 +149,10 @@ def set_casting(ability_mod, character_sheet, prof_bonus, spell_casting):
 
 def set_personality(character_sheet, personality_traits):
     character_sheet["attribs"].append(
-        misc_functions.attribute("personality_traits", "\n".join(personality_traits[1:-3]), ""))
-    character_sheet["attribs"].append(misc_functions.attribute("ideals", personality_traits[-3], ""))
-    character_sheet["attribs"].append(misc_functions.attribute("bonds", personality_traits[-2], ""))
-    character_sheet["attribs"].append(misc_functions.attribute("flaws", personality_traits[-1], ""))
+        misc_functions.attribute("personality_traits", "\n".join(personality_traits[0:2]), ""))
+    character_sheet["attribs"].append(misc_functions.attribute("ideals", personality_traits[2], ""))
+    character_sheet["attribs"].append(misc_functions.attribute("bonds", personality_traits[3], ""))
+    character_sheet["attribs"].append(misc_functions.attribute("flaws", personality_traits[4], ""))
 
 
 def set_char_appearence(char_appearance, character_sheet):
@@ -177,7 +177,8 @@ def convert(filename):
     char_class_search = bs_data.find_all('element', {"type": "Class"})
     char_size = bs_data.find('element', {"type": "Size"})
 
-    personality_traits = [trait.text for trait in bs_data.find_all("element", {"type": "List"})]
+    personality_traits = [trait.text for trait in bs_data.find_all("element", {"type": "List", "name": re.compile(
+        "(Personality Trait)|(Ideal)|(Bond)|(Flaw)")})]
     ability_score, ability_mod = get_abillity_scores(char_race_search, bs_data, reader)
     skill_proficiencies, skills = get_skills(ability_mod, bs_data)
 
