@@ -1,6 +1,6 @@
 import os
+
 from bs4 import BeautifulSoup
-import lxml
 
 
 class AuroraReader:
@@ -16,7 +16,7 @@ class AuroraReader:
                     bs_data = BeautifulSoup(data, 'xml')
                     self.full_data.append(bs_data)
         os.chdir('..')
-        os.chdir('Character sheet converter')
+        os.chdir('aurora-roll20-converter')
 
     def full_data_find(self, to_find):
         list = []

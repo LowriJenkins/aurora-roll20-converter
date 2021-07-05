@@ -13,7 +13,7 @@ def bomstrip(string):
         return string
 
 
-def attribute(name, current ="", max=""):
+def attribute(name, current="", max=""):
     return {"name": name, "current": current, "max": max, "id": ""}
 
 

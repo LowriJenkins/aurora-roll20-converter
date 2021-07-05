@@ -1,8 +1,9 @@
 import json
-import re
 import os
-from bs4 import BeautifulSoup
+import re
 from copy import deepcopy
+
+from bs4 import BeautifulSoup
 
 import misc_functions
 from get_aurora_files import AuroraReader as AR
@@ -62,7 +63,7 @@ def get_skills(ability_mod, bs_data):
 
 def get_saves(ability_mod, bs_data, prof_bonus):
     save_proficiencies = bs_data.find_all("element",
-                                           {"type": "Proficiency", "id": re.compile('ID_PROFICIENCY_SAVINGTHROW_.*')})
+                                          {"type": "Proficiency", "id": re.compile('ID_PROFICIENCY_SAVINGTHROW_.*')})
     save_proficiencies = [proficiency["id"].replace("ID_PROFICIENCY_SAVINGTHROW_", "").lower() for proficiency in
                           save_proficiencies]
     save_proficiencies = set(save_proficiencies)
@@ -235,7 +236,7 @@ def convert(filename):
     set_char_appearence(char_appearance, character_sheet)
     set_personality(character_sheet, personality_traits)
 
-    character_sheet["attribs"].append(misc_functions.attribute("ac", ability_mod["dexterity"]+10, ""))
+    character_sheet["attribs"].append(misc_functions.attribute("ac", ability_mod["dexterity"] + 10, ""))
     set_casting(ability_mod, character_sheet, prof_bonus, spell_casting)
 
     set_abillity_scores(ability_mod, ability_score, character_sheet)
@@ -254,7 +255,7 @@ def convert(filename):
 
 
 def main():
-    for folder, subs, files in os.walk(os.path.abspath(os.join(os.curdir,"input"))):
+    for folder, subs, files in os.walk(os.path.abspath(os.path.join(os.curdir, "input"))):
         files = [fi for fi in files if fi.endswith(".dnd5e")]
         for filename in files:
             convert(os.path.join(folder, filename))
