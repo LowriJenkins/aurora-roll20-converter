@@ -254,7 +254,7 @@ def convert(filename):
 
 
 def main():
-    for folder, subs, files in os.walk(os.path.abspath(os.curdir)):
+    for folder, subs, files in os.walk(os.path.abspath(os.join(os.curdir,"input"))):
         files = [fi for fi in files if fi.endswith(".dnd5e")]
         for filename in files:
             convert(os.path.join(folder, filename))
