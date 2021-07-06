@@ -223,6 +223,7 @@ def convert(filename):
     character_sheet["name"] = name.text
     character_sheet["attribs"][0]["current"] = misc_functions.hitdice[char_class.text]
     character_sheet["attribs"].append(misc_functions.attribute("class", char_class.text, ""))
+    character_sheet["attribs"].append(misc_functions.attribute("options-class-selection", "on", ""))
     character_sheet["attribs"].append(misc_functions.attribute("hitdie_final", "@{hitdietype}", ""))
     character_sheet["attribs"].append(
         misc_functions.attribute("hitdietype", misc_functions.hitdice[char_class.text], ""))
@@ -233,7 +234,8 @@ def convert(filename):
     character_sheet["attribs"].append(misc_functions.attribute("race_display", char_race.text, ""))
     character_sheet["attribs"].append(misc_functions.attribute("size", char_size["name"], ""))
     character_sheet["attribs"].append(misc_functions.attribute("subclass", archetype, ""))
-
+    character_sheet["attribs"].append(
+        misc_functions.attribute("class_display", "{} {} {}".format(archetype, char_class.text, char_level), ""))
     set_char_appearence(char_appearance, character_sheet)
     set_personality(character_sheet, personality_traits)
 
