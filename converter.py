@@ -9,13 +9,13 @@ import misc_functions
 from get_aurora_files import AuroraReader as AR
 
 
-def get_abillity_scores(char_race, bs_data, reader):
+def get_abillity_scores(char_race, bs_data, reader, improvements):
     ability_score = {"strength": 0, "dexterity": 0, "wisdom": 0, "constitution": 0, "intelligence": 0, "charisma": 0}
     ability_mod = {"strength": 0, "dexterity": 0, "wisdom": 0, "constitution": 0, "intelligence": 0, "charisma": 0}
     abilities = char_race[0].find_all('element', {"type": "Ability Score Improvement"})
     for ability in ability_score:
         base = int(bs_data.find(ability).text)
-        ability_score[ability] = base
+        ability_score[ability] = base + improvements[ability]
         ability_mod[ability] = int((ability_score[ability] - 10) / 2)
     if len(abilities) > 0:
         for ability in abilities:
@@ -179,10 +179,7 @@ def convert(filename):
 
     personality_traits = [trait.text for trait in bs_data.find_all("element", {"type": "List", "name": re.compile(
         "(Personality Trait)|(Ideal)|(Bond)|(Flaw)")})]
-    ability_score, ability_mod = get_abillity_scores(char_race_search, bs_data, reader)
-    skill_proficiencies, skills = get_skills(ability_mod, bs_data)
 
-    saves_proficiencies, saves = get_saves(ability_mod, bs_data, prof_bonus)
 
     traits_search = char_race_search[0].find_all('element', {"type": "Racial Trait",
                                                              "registered": re.compile('.*_RACIAL_TRAIT_.*')})
@@ -197,11 +194,15 @@ def convert(filename):
     find_matching_traits(racial_traits, reader, traits_search)
     traits_search = char_class_search[0].find_all('element',
                                                   {"type": "Class Feature", "id": re.compile('.*_CLASS_FEATURE_.*')})
-    traits_search = [trait["id"] for trait in traits_search]
     spell_casting = None
     class_traits = []
+    ability_improvements = {"strength": 0, "dexterity": 0, "wisdom": 0, "constitution": 0, "intelligence": 0, "charisma": 0}
     for trait in traits_search:
-        feature = reader.full_data_find({"id": trait})
+        if trait["name"] == "Ability Score Improvement":
+            ability_improvement = trait.find_all('element', {"type": "Ability Score Improvement"})
+            for ability in ability_improvement:
+                ability_improvements[ability["registered"].replace("ID_INTERNAL_ASI_", "").lower()] += 1
+        feature = reader.full_data_find({"id": trait["id"]})
         if feature["name"] == "Spellcasting":
             spell_casting = feature.find("spellcasting")["ability"].lower()
         class_traits.append(feature)
@@ -219,6 +220,11 @@ def convert(filename):
         traits_search = [trait["id"] for trait in traits_search]
         find_matching_traits(archetype_traits, reader, traits_search)
         archetype = reader.full_data_find({"id": archetype["registered"]})["name"]
+
+    ability_score, ability_mod = get_abillity_scores(char_race_search, bs_data, reader, ability_improvements)
+    skill_proficiencies, skills = get_skills(ability_mod, bs_data)
+
+    saves_proficiencies, saves = get_saves(ability_mod, bs_data, prof_bonus)
 
     character_sheet["name"] = name.text
     character_sheet["attribs"][0]["current"] = misc_functions.hitdice[char_class.text]
