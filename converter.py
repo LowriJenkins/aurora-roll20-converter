@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 from copy import deepcopy
@@ -16,18 +17,17 @@ def get_abillity_scores(char_race, bs_data, reader, improvements):
     for ability in ability_score:
         base = int(bs_data.find(ability).text)
         ability_score[ability] = base + improvements[ability]
-        ability_mod[ability] = int((ability_score[ability] - 10) / 2)
     if len(abilities) > 0:
         for ability in abilities:
             stat_increase = (reader.full_data_find({"id": ability["registered"]}).find("stat"))
             ability_score[stat_increase["name"]] += int(stat_increase["value"])
-            ability_mod[stat_increase["name"]] = int((ability_score[stat_increase["name"]] - 10) / 2)
     else:
         increase = reader.full_data_find({"id": char_race[1]['id']}).find_all("stat")
         increase = [stat for stat in increase if stat["name"] in ability_score]
         for stat in increase:
             ability_score[stat["name"]] += int(stat["value"])
-            ability_mod[stat["name"]] = int((ability_score[stat["name"]] - 10) / 2)
+    for ability in ability_mod:
+        ability_mod[ability] = math.floor((ability_score[ability] - 10) / 2)
     return ability_score, ability_mod
 
 
@@ -111,6 +111,17 @@ def set_traits(data, character_sheet, racial_traits, source):
         add_traits(character_sheet, trait, data, source)
 
 
+def set_hitdice(class_text):
+    multiclass_list = split_classes(class_text)
+    return misc_functions.hitdice[multiclass_list[0]]
+
+
+def split_classes(class_text):
+    multiclass_list = class_text.split("/")
+    multiclass_list = [re.sub(r"\([0-9]+\)", "", class_text).strip() for class_text in multiclass_list]
+    return multiclass_list
+
+
 def set_saves(character_sheet, saves, saves_proficiencies):
     for save in saves:
         character_sheet["attribs"].append(misc_functions.attribute("{}_save_bonus".format(save), saves[save], ""))
@@ -180,7 +191,6 @@ def convert(filename):
     personality_traits = [trait.text for trait in bs_data.find_all("element", {"type": "List", "name": re.compile(
         "(Personality Trait)|(Ideal)|(Bond)|(Flaw)")})]
 
-
     traits_search = char_race_search[0].find_all('element', {"type": "Racial Trait",
                                                              "registered": re.compile('.*_RACIAL_TRAIT_.*')})
     if len(traits_search) == 0:
@@ -192,34 +202,27 @@ def convert(filename):
 
     racial_traits = []
     find_matching_traits(racial_traits, reader, traits_search)
-    traits_search = char_class_search[0].find_all('element',
-                                                  {"type": "Class Feature", "id": re.compile('.*_CLASS_FEATURE_.*')})
-    spell_casting = None
-    class_traits = []
-    ability_improvements = {"strength": 0, "dexterity": 0, "wisdom": 0, "constitution": 0, "intelligence": 0, "charisma": 0}
-    for trait in traits_search:
-        if trait["name"] == "Ability Score Improvement":
-            ability_improvement = trait.find_all('element', {"type": "Ability Score Improvement"})
-            for ability in ability_improvement:
-                ability_improvements[ability["registered"].replace("ID_INTERNAL_ASI_", "").lower()] += 1
-        feature = reader.full_data_find({"id": trait["id"]})
-        if feature["name"] == "Spellcasting":
-            spell_casting = feature.find("spellcasting")["ability"].lower()
-        class_traits.append(feature)
+    ability_improvements = {"strength": 0, "dexterity": 0, "wisdom": 0, "constitution": 0, "intelligence": 0,
+                            "charisma": 0}
+
+    class_traits, spell_casting = class_feature_search(ability_improvements, char_class_search[0], reader)
+    archetype, archetype_traits = archetype_search(char_class_search[0], reader)
+    multiclass_traits = []
+    multiclass_archetype = []
+    char_class_search = bs_data.find_all('element', {"type": "Multiclass"})
+    if len(char_class_search) > 1:
+        for class_type in char_class_search[:len(char_class_search) // 2]:
+            temp_class_traits, temp_spell_casting = class_feature_search(ability_improvements, class_type, reader)
+            temp_archetype, temp_archetype_traits = archetype_search(class_type, reader)
+            multiclass_archetype.append((temp_archetype, temp_archetype_traits))
+            multiclass_traits.append(temp_class_traits)
+            if spell_casting is None:
+                spell_casting = temp_spell_casting
 
     traits_search = bs_data.find_all('element', {"type": "Feat", "id": re.compile('.*_FEAT_.*')})
     traits_search = [trait["id"] for trait in traits_search]
     feats = []
     find_matching_traits(feats, reader, traits_search)
-    archetype = char_class_search[0].find("element", {"type": "Archetype"})
-
-    archetype_traits = []
-    if archetype is not None:
-        traits_search = archetype.find_all('element',
-                                           {"type": "Archetype Feature", "id": re.compile('.*_ARCHETYPE_.*')})
-        traits_search = [trait["id"] for trait in traits_search]
-        find_matching_traits(archetype_traits, reader, traits_search)
-        archetype = reader.full_data_find({"id": archetype["registered"]})["name"]
 
     ability_score, ability_mod = get_abillity_scores(char_race_search, bs_data, reader, ability_improvements)
     skill_proficiencies, skills = get_skills(ability_mod, bs_data)
@@ -227,12 +230,12 @@ def convert(filename):
     saves_proficiencies, saves = get_saves(ability_mod, bs_data, prof_bonus)
 
     character_sheet["name"] = name.text
-    character_sheet["attribs"][0]["current"] = misc_functions.hitdice[char_class.text]
+    classes = split_classes(char_class.text)
+    for class_type in classes:
+        character_sheet["attribs"][0]["current"] = misc_functions.hitdice[class_type]
     character_sheet["attribs"].append(misc_functions.attribute("class", char_class.text, ""))
     character_sheet["attribs"].append(misc_functions.attribute("options-class-selection", "on", ""))
     character_sheet["attribs"].append(misc_functions.attribute("hitdie_final", "@{hitdietype}", ""))
-    character_sheet["attribs"].append(
-        misc_functions.attribute("hitdietype", misc_functions.hitdice[char_class.text], ""))
     character_sheet["attribs"].append(misc_functions.attribute("level", char_level, ""))
     character_sheet["attribs"].append(misc_functions.attribute("base_level", char_level, ""))
     character_sheet["attribs"].append(misc_functions.attribute("pb", prof_bonus, ""))
@@ -254,13 +257,53 @@ def convert(filename):
     set_saves(character_sheet, saves, saves_proficiencies)
 
     set_traits(char_race.text, character_sheet, racial_traits, "Race")
-    set_traits(char_class.text, character_sheet, class_traits, "Class")
+    set_traits(classes[0], character_sheet, class_traits, "Class")
     set_traits(archetype, character_sheet, archetype_traits, "Class")
+    current_class = 1;
+    for multiclass in multiclass_traits:
+        set_traits(classes[current_class], character_sheet, multiclass, "Class")
+        current_class += 1
+
+    for multiclass in multiclass_archetype:
+        set_traits(multiclass[0], character_sheet, multiclass[1], "Class")
     set_traits("Feat", character_sheet, feats, "Feat")
 
     print(character_sheet["attribs"])
     with open(os.path.join("output", '{}.json'.format(name.text)), 'w') as f:
         json.dump(json_data, f)
+
+
+def archetype_search(char_class_search, reader):
+    archetype = char_class_search.find("element", {"type": "Archetype"})
+    archetype_traits = []
+    if archetype is not None:
+        traits_search = archetype.find_all('element',
+                                           {"type": "Archetype Feature", "id": re.compile('.*_ARCHETYPE_.*')})
+        traits_search = [trait["id"] for trait in traits_search]
+        find_matching_traits(archetype_traits, reader, traits_search)
+        archetype = reader.full_data_find({"id": archetype["registered"]})["name"]
+    return archetype, archetype_traits
+
+
+def class_feature_search(ability_improvements, char_class_search, reader):
+    traits_search = char_class_search.find_all('element',
+                                               {"type": "Class Feature", "id": re.compile('.*_CLASS_FEATURE_.*')})
+    spell_casting = None
+    class_traits = []
+
+    for trait in traits_search:
+        if trait["name"] == "Ability Score Improvement":
+            ability_improvement = trait.find_all('element', {"type": "Ability Score Improvement"})
+
+            for ability in ability_improvement:
+                ability_improvements[
+                    re.search("ID_([A-Z]*_)*ASI_([A-Z]*)", ability["registered"]).group(2).lower()] += 1
+
+        feature = reader.full_data_find({"id": trait["id"]})
+        if feature["name"] == "Spellcasting":
+            spell_casting = feature.find("spellcasting")["ability"].lower()
+        class_traits.append(feature)
+    return class_traits, spell_casting
 
 
 def main():
