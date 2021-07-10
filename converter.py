@@ -32,9 +32,10 @@ def get_abillity_scores(char_race, bs_data, reader, improvements):
 
 
 def read_data(filename):
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         data = f.read()
-    data = misc_functions.bomstrip(data)
+    data = misc_functions.bomstrip(data).splitlines(True)
+    data = "".join(data[1:])
     # Passing the stored data inside the beautifulsoup parser
     bs_data = BeautifulSoup(data, 'xml')
     json_data = json.load(open('character sheet.json', 'r'))
@@ -75,7 +76,10 @@ def get_saves(ability_mod, bs_data, prof_bonus):
 
 def add_traits(character_sheet, trait, type, source):
     if not trait.find("sheet", {"display": "false"}):
-        display = trait.find("sheet").find("description").get_text()
+        display = trait.find("sheet")
+        if display is None:
+            return
+        display = display.find("description").get_text()
         display = display.replace("\t", "")
         trait_name = trait["name"]
         character_sheet["attribs"].append(
@@ -300,9 +304,10 @@ def class_feature_search(ability_improvements, char_class_search, reader):
                     re.search("ID_([A-Z]*_)*ASI_([A-Z]*)", ability["registered"]).group(2).lower()] += 1
 
         feature = reader.full_data_find({"id": trait["id"]})
-        if feature["name"] == "Spellcasting":
-            spell_casting = feature.find("spellcasting")["ability"].lower()
-        class_traits.append(feature)
+        if feature is not None:
+            if feature["name"] == "Spellcasting":
+                spell_casting = feature.find("spellcasting")["ability"].lower()
+                class_traits.append(feature)
     return class_traits, spell_casting
 
 
