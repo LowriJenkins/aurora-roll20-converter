@@ -1,6 +1,6 @@
 beautifulsoup4==4.9.3
 EditorConfig==0.12.3
 jsbeautifier==1.14.0
-lxml==4.6.3
+lxml==4.6.5
 six==1.16.0
 soupsieve==2.2.1
